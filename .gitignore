@@ -4,3 +4,4 @@ __pycache__/
 .env
 uploads/
 output.pdf
+*.log

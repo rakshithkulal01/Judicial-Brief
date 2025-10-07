@@ -1,31 +1,18 @@
-from fastapi import FastAPI, File, UploadFile
-from pdf_reader import extract_text_from_pdf
-import shutil
-import os
-
-app = FastAPI()
-
-UPLOAD_DIR = "uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-@app.post("/upload/")
-async def upload_pdf(file: UploadFile = File(...)):
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    # Extract text after upload
-    text = extract_text_from_pdf(file_path)
-    return {"filename": file.filename, "extracted_text": text[:1000]}  # Just first 1000 chars for test
-
-
-from fastapi import FastAPI, File, UploadFile, Form
+from fastapi import FastAPI, Response, File, UploadFile, Form, Body
+from fastapi.responses import FileResponse
 from pdf_reader import extract_text_from_pdf
 from summarize.gemini import generate_summary
 from summarize.base import SummarizerInput
+from qna.gemini import answer_question
+from qna.base import QnaInput
+from pdf_exporter import create_summary_pdf
 import shutil
 import os
+import json
+from typing import Optional
 
 app = FastAPI()
+
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
@@ -53,13 +40,6 @@ async def summarize_doc(
         "precedents": summary_output.precedents
     }
 
-
-from qna.gemini import answer_question
-from qna.base import QnaInput
-
-import json
-from typing import Optional
-
 @app.post("/qna/")
 async def ask_question(
     document_text: str = Form(...),
@@ -67,11 +47,9 @@ async def ask_question(
     chat_history: Optional[str] = Form(default="[]")
 ):
     try:
-        # Parse chat_history as JSON
         parsed_history = json.loads(chat_history) if chat_history else []
     except:
-        parsed_history = []  # Fallback if JSON parsing fails
-    
+        parsed_history = []
     input_data = QnaInput(document_text, question, parsed_history)
     qna_output = answer_question(input_data)
     return {
@@ -80,24 +58,21 @@ async def ask_question(
         "confidence": qna_output.confidence
     }
 
-
 @app.post("/extract/")
 async def extract_items(text: str = Form(...)):
+    # Make sure ai_extract_clauses_and_precedents is defined somewhere!
     clauses, precedents = ai_extract_clauses_and_precedents(text)
     return {
         "clauses": clauses,
         "precedents": precedents
     }
 
-from fastapi.responses import FileResponse
-from pdf_exporter import build_summary_pdf
+from fastapi import Body, Response
 
-@app.post("/download/")
-async def download_pdf(
-    summary: str = Form(...),
-    key_points: list = Form(default=[]),
-    clauses: list = Form(default=[]),
-    precedents: list = Form(default=[])
-):
-    path = build_summary_pdf(summary, key_points, clauses, precedents)
-    return FileResponse(path=path, filename="summary.pdf", media_type="application/pdf")
+@app.post("/export-pdf/")
+async def export_pdf(payload: dict = Body(...)):
+    pdf_file = create_summary_pdf(payload)
+    headers = {
+        "Content-Disposition": "attachment; filename=AI_Judicial_Summary.pdf"
+    }
+    return Response(content=pdf_file, media_type="application/pdf", headers=headers)
