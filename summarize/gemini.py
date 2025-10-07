@@ -1,14 +1,18 @@
+from dotenv import load_dotenv
+import os
 import google.generativeai as genai
 from summarize.base import SummarizerInput, SummarizerOutput
-
 import json
 
-# Initialize Gemini (you'll set this in config.py)
-def init_gemini(api_key):
-    genai.configure(api_key=api_key)
+# Load API key and configure Gemini immediately
+load_dotenv()
+api_key = os.getenv("GEMINI_API_KEY")
+print("DEBUG - GEMINI_API_KEY loaded:", api_key)  # Debug print
+genai.configure(api_key=api_key)
+
 
 def generate_summary(input: SummarizerInput) -> SummarizerOutput:
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('models/gemini-2.5-pro')
     
     # Create a prompt based on user preferences
     prompt = f"""

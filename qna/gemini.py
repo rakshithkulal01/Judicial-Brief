@@ -2,7 +2,7 @@ import google.generativeai as genai
 from .base import QnaInput, QnaOutput
 
 def answer_question(input: QnaInput) -> QnaOutput:
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('models/gemini-2.5-pro')
     
     # Build context with chat history
     context = "Document Content:\n" + input.document_text + "\n\n"

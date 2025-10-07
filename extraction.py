@@ -1,7 +1,7 @@
 import google.generativeai as genai
 
 def ai_extract_clauses(text):
-    model = genai.GenerativeModel('gemini-pro')
+    model = genai.GenerativeModel('models/gemini-2.5-pro')
     prompt = (
         "Extract and list all key clauses (statutes, sections, articles) and all cited precedents from the following legal document. "
         "Format as JSON with keys: clauses, precedents.\n\n"
